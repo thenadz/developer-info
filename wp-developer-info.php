@@ -8,14 +8,11 @@ Version: 0.2
 Author URI: http://danrossiter.org
  */
 
-define( 'DI_PLUG', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wordpress.org/extend/plugins/developer-info -->'.PHP_EOL );
-define( 'DI_PLUGIN_URL', 'http://api.wordpress.org/plugins/info/1.0/' );
+define( 'DI_COMMENT', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wordpress.org/extend/plugins/developer-info -->'.PHP_EOL );
+define( 'DI_PLUGIN_INFO', 'http://api.wordpress.org/plugins/info/1.0/' );
+define( 'DI_PLUGIN_STATS', 'http://api.wordpress.org/stats/plugin/1.0/' ); // [plugin-slug]?callback=[js func wrapper]
+define( 'DI_PLUGIN_DOWNLOADS', 'http://api.wordpress.org/stats/plugin/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]
 //define( 'DI_THEME_URL', 'http://api.wordpress.org/themes/info/1.0/' );
-
-/* TODO:
- * http://api.wordpress.org/stats/plugin/1.0/downloads.php?slug=[slug]&limit=[number to return]&callback[function]
- * http://api.wordpress.org/stats/plugin/1.0/[slug]?callback=[function]
- */
 
 function di_do_shortcode( $args ){
 	extract( shortcode_atts( array(
