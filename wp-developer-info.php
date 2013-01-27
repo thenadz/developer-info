@@ -12,14 +12,23 @@ define( 'DI_PLUGIN', 0 );
 define( 'DI_THEME', 1 );
 
 define( 'DI_COMMENT', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wordpress.org/extend/plugins/developer-info -->'.PHP_EOL );
+
 define( 'DI_PLUGIN_INFO', 'http://api.wordpress.org/plugins/info/1.0/' );
 define( 'DI_PLUGIN_STATS', 'http://api.wordpress.org/stats/plugin/1.0/' ); // [plugin-slug]?callback=[js func wrapper]
 define( 'DI_PLUGIN_DOWNLOADS', 'http://api.wordpress.org/stats/plugin/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]
-//define( 'DI_THEME_INFO', 'http://api.wordpress.org/themes/info/1.0/' );
+
+define( 'DI_THEME_INFO', 'http://api.wordpress.org/themes/info/1.0/' );
+define( 'DI_THEME_DOWNLOADS', 'http://api.wordpress.org/stats/themes/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]);
+// why is "theme" in ^ path plural when it's singular in the plugin equiv..? This API is GHETO!!!
 
 
 function di_get_downloads( $slug, $limit=365, $cb=NULL, $type=DI_PLUGIN ){
-	$url = DI_PLUGIN_DOWNLOADS."?slug=$slug&limit=$limit";
+	if( $type === DI_PLUGIN )
+		$url = DI_PLUGIN_DOWNLOADS;
+	else
+		$url = DI_THEME_DOWNLOADS;
+	$url .= "?slug=$slug&limit=$limit";
+
 	if( $cb ) $url .= "&callback=$cb";
 	
 	$resp = wp_remote_get( $url, array( 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ) );
@@ -33,7 +42,8 @@ function di_get_downloads( $slug, $limit=365, $cb=NULL, $type=DI_PLUGIN ){
 	return $resp['body'];
 }
 
-function di_get_stats( $slug, $cb=NULL, $type=DI_PLUGIN ){
+// there doesn't appear to be a STATS url for themes
+function di_get_stats( $slug, $cb=NULL ){//, $type=DI_PLUGIN ){
 	$url = DI_PLUGIN_STATS.$slug;
 	if( $cb ) $url .= "?callback=$cb";
 
@@ -53,13 +63,9 @@ function di_information( $slug, $fields=NULL, $type=DI_PLUGIN ){
 	if( $fields !== NULL && is_array($fields) )
 		$args['fields'] = $fields;
 
-	return di_send_info_request( 'plugin_information', $args );
+	return di_send_info_request( 'plugin_information', $args, $type );
 }
 
-// types:
-// 1 => plugins
-// 2 => themes
-//
 // (array)args may include...
 // browse – A bbPress View to “browse”, eg, “popular” = http://wordpress.org/extend/plugins/browse/popular/
 // search – The term to search for
@@ -74,7 +80,7 @@ function di_query( $args, $fields=NULL, $type=DI_PLUGIN ){
 	if( $fields !== NULL && is_array($fields) && !isset($args['fields']) )
 		$args['fields'] = $fields;
 
-	return di_send_info_request( 'query_plugins', $args );
+	return di_send_info_request( 'query_plugins', $args, $type );
 }
 
 // Returns: array of objects
@@ -82,18 +88,21 @@ function di_query( $args, $fields=NULL, $type=DI_PLUGIN ){
 // - 'slug' - tag slug
 // - 'count' - number of plugins
 function di_hot_tags( $number=100, $type=DI_PLUGIN ){
-	return di_send_request( 'hot_tags', $number );
+	return di_send_request( 'hot_tags', $number, $type );
 }
 
-function di_send_info_request( $action, $args, $type=DI_PLUGIN ){
+function di_send_info_request( $action, $args, $type ){
 	$body = array(
 		'action'	=> $action,
 		'request'	=> serialize( (object)$args )
 	);
+	
+	if( $type === DI_PLUGIN )
+		$url = DI_PLUGIN_INFO;
+	else
+		$url = DI_THEME_INFO;
 
-	$response = wp_remote_post( DI_PLUGIN_INFO, 
-		array( 'body' => $body )
-	);
+	$response = wp_remote_post( $url, array( 'body' => $body ) );
 
 	if( is_wp_error( $response ) ){
 		return 0;
@@ -115,9 +124,32 @@ function di_is_error( $obj ){
 /* ADD SHORTCODE */
 function di_do_shortcode( $args ){
 	extract( shortcode_atts( array(
-		'slug' => NULL,
-		'field' => NULL
+		'slug'				=> NULL,
+		'query_type'	=> NULL, // browse, search, tag, author
+		'query_value'	=> NULL, // term to query for
+		'field'				=> NULL, // value to return
+		'type'				=> 'plugin',
+		'cache'				=> true			// not supported yet
 	), $args ) );
+
+	if( $query_type ^ $query_value ) // TODO: handle error
+		return 0; // both or neither must be defined
+	switch( $query_type ){
+		case 'browse':
+		case 'search':
+		case 'tag':
+		case 'author':
+			break;
+		default: // TODO: handle error
+			return 0; // unsupported type
+	}
+
+	if( $type == 'plugin' ){
+		$type = DI_PLUGIN;
+	elseif( $type == 'theme' )
+		$type = DI_THEME;
+	else // TODO: Handle error
+		return 0;
 	
 	$fields = array(
 		'description' => false,
@@ -143,6 +175,5 @@ function di_do_shortcode( $args ){
 
 	// API failed
 	return '[An Error Occured]';
-	
 }
 add_shortcode( 'dinfo', 'di_do_shortcode' );
