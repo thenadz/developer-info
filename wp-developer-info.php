@@ -12,7 +12,7 @@ define( 'DI_COMMENT', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wo
 define( 'DI_PLUGIN_INFO', 'http://api.wordpress.org/plugins/info/1.0/' );
 define( 'DI_PLUGIN_STATS', 'http://api.wordpress.org/stats/plugin/1.0/' ); // [plugin-slug]?callback=[js func wrapper]
 define( 'DI_PLUGIN_DOWNLOADS', 'http://api.wordpress.org/stats/plugin/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]
-//define( 'DI_THEME_URL', 'http://api.wordpress.org/themes/info/1.0/' );
+//define( 'DI_THEME_INFO', 'http://api.wordpress.org/themes/info/1.0/' );
 
 function di_do_shortcode( $args ){
 	extract( shortcode_atts( array(
@@ -39,7 +39,7 @@ function di_do_shortcode( $args ){
 
 	$fields = array( 'field' => $field );
 	if( $ret = di_information( $slug, $fields ) ){
-		return DI_PLUG.$ret->{$field}; // success
+		return DI_COMMENT.$ret->{$field}; // success
 	}
 
 	// API failed
@@ -91,7 +91,7 @@ function di_send_request( $action, $args ){
 		'request'	=> serialize( (object)$args )
 	);
 
-	$response = wp_remote_post( DI_PLUGIN_URL, 
+	$response = wp_remote_post( DI_PLUGIN_INFO, 
 		array( 'body' => $body )
 	);
 
