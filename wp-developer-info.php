@@ -8,12 +8,111 @@ Version: 0.2
 Author URI: http://danrossiter.org
  */
 
+define( 'DI_PLUGIN', 0 );
+define( 'DI_THEME', 1 );
+
 define( 'DI_COMMENT', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wordpress.org/extend/plugins/developer-info -->'.PHP_EOL );
 define( 'DI_PLUGIN_INFO', 'http://api.wordpress.org/plugins/info/1.0/' );
 define( 'DI_PLUGIN_STATS', 'http://api.wordpress.org/stats/plugin/1.0/' ); // [plugin-slug]?callback=[js func wrapper]
 define( 'DI_PLUGIN_DOWNLOADS', 'http://api.wordpress.org/stats/plugin/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]
 //define( 'DI_THEME_INFO', 'http://api.wordpress.org/themes/info/1.0/' );
 
+
+function di_get_downloads( $slug, $limit=365, $cb=NULL, $type=DI_PLUGIN ){
+	$url = DI_PLUGIN_DOWNLOADS."?slug=$slug&limit=$limit";
+	if( $cb ) $url .= "&callback=$cb";
+	
+	$resp = wp_remote_get( $url, array( 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ) );
+
+	if( is_wp_error( $resp ) )
+		return 0;
+	elseif( $resp['response']['code'] > 299 || 
+					$resp['response']['code'] < 200 )
+		return 0;
+
+	return $resp['body'];
+}
+
+function di_get_stats( $slug, $cb=NULL, $type=DI_PLUGIN ){
+	$url = DI_PLUGIN_STATS.$slug;
+	if( $cb ) $url .= "?callback=$cb";
+
+	$resp = wp_remote_get( $url, array( 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ) );
+
+	if( is_wp_error( $resp ) )
+		return 0;
+	elseif( $resp['response']['code'] > 299 || 
+					$resp['response']['code'] < 200 )
+		return 0;
+
+	return $resp['body'];
+}
+
+function di_information( $slug, $fields=NULL, $type=DI_PLUGIN ){
+	$args = array( 'slug' => $slug );
+	if( $fields !== NULL && is_array($fields) )
+		$args['fields'] = $fields;
+
+	return di_send_info_request( 'plugin_information', $args );
+}
+
+// types:
+// 1 => plugins
+// 2 => themes
+//
+// (array)args may include...
+// browse – A bbPress View to “browse”, eg, “popular” = http://wordpress.org/extend/plugins/browse/popular/
+// search – The term to search for
+// tag – Browse by a tag
+// author – Browse by an author (Note: .org has a few plugins to extend the author search to include contributors/etc)
+//
+// (array)fields may include...
+// ‘description’, ‘sections’, ‘tested’ ,’requires’, ‘rating’, ‘downloaded’, ‘downloadlink’, ‘last_updated’ , ‘homepage’, ‘tags’
+//
+// Returns: array of plugin objects (like pi_information)
+function di_query( $args, $fields=NULL, $type=DI_PLUGIN ){
+	if( $fields !== NULL && is_array($fields) && !isset($args['fields']) )
+		$args['fields'] = $fields;
+
+	return di_send_info_request( 'query_plugins', $args );
+}
+
+// Returns: array of objects
+// - 'name' - tag name
+// - 'slug' - tag slug
+// - 'count' - number of plugins
+function di_hot_tags( $number=100, $type=DI_PLUGIN ){
+	return di_send_request( 'hot_tags', $number );
+}
+
+function di_send_info_request( $action, $args, $type=DI_PLUGIN ){
+	$body = array(
+		'action'	=> $action,
+		'request'	=> serialize( (object)$args )
+	);
+
+	$response = wp_remote_post( DI_PLUGIN_INFO, 
+		array( 'body' => $body )
+	);
+
+	if( is_wp_error( $response ) ){
+		return 0;
+	}
+
+	$response = unserialize( $response['body'] );
+	// hot_tags returns Array which will cause issues
+	if( is_object( $response ) && di_is_error( $response ) ) {
+		return 0;
+	}
+
+	return $response;
+}
+
+function di_is_error( $obj ){
+	return property_exists( $obj, 'error' );
+}
+
+/* ADD SHORTCODE */
 function di_do_shortcode( $args ){
 	extract( shortcode_atts( array(
 		'slug' => NULL,
@@ -47,67 +146,3 @@ function di_do_shortcode( $args ){
 	
 }
 add_shortcode( 'dinfo', 'di_do_shortcode' );
-
-function di_information( $slug, $fields=NULL ){
-	$args = array( 'slug' => $slug );
-	if( $fields !== NULL && is_array($fields) )
-		$args['fields'] = $fields;
-
-	return di_send_request( 'plugin_information', $args );
-}
-
-// types:
-// 1 => plugins
-// 2 => themes
-//
-// (array)args may include...
-// browse – A bbPress View to “browse”, eg, “popular” = http://wordpress.org/extend/plugins/browse/popular/
-// search – The term to search for
-// tag – Browse by a tag
-// author – Browse by an author (Note: .org has a few plugins to extend the author search to include contributors/etc)
-//
-// (array)fields may include...
-// ‘description’, ‘sections’, ‘tested’ ,’requires’, ‘rating’, ‘downloaded’, ‘downloadlink’, ‘last_updated’ , ‘homepage’, ‘tags’
-//
-// Returns: array of plugin objects (like pi_information)
-function di_query( $args, $fields=NULL ){
-	if( $fields !== NULL && is_array($fields) && !isset($args['fields']) )
-		$args['fields'] = $fields;
-
-	return di_send_request( 'query_plugins', $args );
-}
-
-// Returns: array of objects
-// - 'name' - tag name
-// - 'slug' - tag slug
-// - 'count' - number of plugins
-function di_hot_tags( $number=100 ){
-	return di_send_request( 'hot_tags', $number );
-}
-
-function di_send_request( $action, $args ){
-	$body = array(
-		'action'	=> $action,
-		'request'	=> serialize( (object)$args )
-	);
-
-	$response = wp_remote_post( DI_PLUGIN_INFO, 
-		array( 'body' => $body )
-	);
-
-	if( is_wp_error( $response ) ){
-		return 0;
-	}
-
-	$response = unserialize( $response['body'] );
-	// hot_tags returns Array which will cause issues
-	if( is_object( $response ) && di_is_error( $response ) ) {
-		return 0;
-	}
-
-	return $response;
-}
-
-function di_is_error( $obj ){
-	return property_exists( $obj, 'error' );
-}
