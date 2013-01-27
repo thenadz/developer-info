@@ -10,7 +10,7 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 This plugin provides easy access to the WordPress.org Plugin & Theme Info APIs
 so that WP.org developers can showcase their work.
 
-= Description =
+== Description ==
 
 **NOTICE: This plugin is in the *painful-to-use* stage of beta. Unless you are
 extremely daring, I recommend holding off on downloading until it has made
