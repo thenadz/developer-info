@@ -11,6 +11,8 @@ Author URI: http://danrossiter.org
 define( 'DI_PLUGIN', 0 );
 define( 'DI_THEME', 1 );
 
+define( 'DI_URL', plugins_url( '/', __FILE__ ) );
+define( 'DI_CHART_DIV', PHP_EOL.'<div id="di-chart-div"></div>'.PHP_EOL;
 define( 'DI_COMMENT', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wordpress.org/extend/plugins/developer-info -->'.PHP_EOL );
 
 define( 'DI_PLUGIN_INFO', 'http://api.wordpress.org/plugins/info/1.0/' );
@@ -43,7 +45,8 @@ function di_get_downloads( $slug, $limit=365, $cb=NULL, $type=DI_PLUGIN ){
 }
 
 // there doesn't appear to be a STATS url for themes
-function di_get_stats( $slug, $cb=NULL ){//, $type=DI_PLUGIN ){
+// => no $type value accepted
+function di_get_stats( $slug, $cb=NULL ){
 	$url = DI_PLUGIN_STATS.$slug;
 	if( $cb ) $url .= "?callback=$cb";
 
@@ -146,10 +149,11 @@ function di_do_shortcode( $args ){
 
 	if( $type == 'plugin' ){
 		$type = DI_PLUGIN;
-	elseif( $type == 'theme' )
+	} elseif( $type == 'theme' ) {
 		$type = DI_THEME;
-	else // TODO: Handle error
+	} else { // TODO: Handle error
 		return 0;
+	}
 	
 	$fields = array(
 		'description' => false,
@@ -177,3 +181,34 @@ function di_do_shortcode( $args ){
 	return '[An Error Occured]';
 }
 add_shortcode( 'dinfo', 'di_do_shortcode' );
+
+function di_downloads_graph( $args ){
+	extract( shortcode_atts( array(
+		'slug'				=> NULL,
+		'gtype'				=> 'downloads', // 'versions' available for plugins
+		'type'				=> 'plugin',
+		'cache'				=> true			// not supported yet
+	), $args ) );
+
+	if( $type == 'plugin' )
+		$type = DI_PLUGIN;
+	elseif( $type == 'theme' && $gtype == 'versions' )
+		return 0;
+	else
+		$type = DI_THEME;
+
+	echo "
+	<script>
+		if( slug === undefined )
+			var slug = $slug;
+		else // handle mult graphs on one pg
+			slug .= '$slug,';
+	</script>";
+
+	return DI_CHART_DIV;
+}
+add_shortcode( 'digraph', 'di_do_graph' );
+
+/* ENQUEUE SCRIPTS & STYLING */
+wp_enqueue_script( 'google-jsapi', 'https://www.google.com/jsapi', , , true );
+wp_enqueue_script( 'dev-info', DI_URL.'js/scripts.js', array( 'google-jsapi' ), , true );
