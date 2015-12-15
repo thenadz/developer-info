@@ -1,214 +1,195 @@
 <?php
+defined( 'WPINC' ) OR exit;
+
 /*
-Plugin Name: WP Developer Info
-Plugin URI: http://wordpress.org/extend/plugins/developer-info
-Description: This plugin provides easy access to the WordPress.org Plugin & Theme Info APIs.
-Author: Dan Rossiter
-Version: 0.2
-Author URI: http://danrossiter.org
+  Plugin Name: WP Developer Info
+  Plugin URI: http://wordpress.org/extend/plugins/developer-info/
+  Description: Easy access to the WP.org Plugin & Theme APIs so that developers can showcase their work.
+  Version: 0.8
+  Requires at least: 2.8.0
+  Author: Dan Rossiter
+  Author URI: http://danrossiter.org/
+  License: GPLv2 or later
+  Text Domain: dev-info
  */
 
-define( 'DI_PLUGIN', 0 );
-define( 'DI_THEME', 1 );
+include_once plugin_dir_path( __FILE__ ) . 'class-plugin.php';
 
-define( 'DI_URL', plugins_url( '/', __FILE__ ) );
-define( 'DI_CHART_DIV', PHP_EOL.'<div id="di-chart-div"></div>'.PHP_EOL;
-define( 'DI_COMMENT', PHP_EOL.'<!-- Generated Using WP Developer Info: http://wordpress.org/extend/plugins/developer-info -->'.PHP_EOL );
+add_shortcode( DeveloperInfo::SHORTCODE_PREFIX, array( 'DeveloperInfo', 'do_shortcode' ) );
+add_action( 'wp_enqueue_scripts', array( 'DeveloperInfo', 'enqueue_styles' ) );
 
-define( 'DI_PLUGIN_INFO', 'http://api.wordpress.org/plugins/info/1.0/' );
-define( 'DI_PLUGIN_STATS', 'http://api.wordpress.org/stats/plugin/1.0/' ); // [plugin-slug]?callback=[js func wrapper]
-define( 'DI_PLUGIN_DOWNLOADS', 'http://api.wordpress.org/stats/plugin/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]
+class DeveloperInfo {
 
-define( 'DI_THEME_INFO', 'http://api.wordpress.org/themes/info/1.0/' );
-define( 'DI_THEME_DOWNLOADS', 'http://api.wordpress.org/stats/themes/1.0/downloads.php' ); // ?slug=[plugin-slug]&limit=[num]&callback=[js func wrapper]);
-// why is "theme" in ^ path plural when it's singular in the plugin equiv..? This API is GHETO!!!
+	/**
+	 * Intended to represent "infinity" when querying the WP.org APIs.
+	 */
+	const FIVE_NINES = 99999;
 
+	/**
+	 * All shortcodes supported by this plugin begin with the following.
+	 */
+	const SHORTCODE_PREFIX = 'dev-info';
 
-function di_get_downloads( $slug, $limit=365, $cb=NULL, $type=DI_PLUGIN ){
-	if( $type === DI_PLUGIN )
-		$url = DI_PLUGIN_DOWNLOADS;
-	else
-		$url = DI_THEME_DOWNLOADS;
-	$url .= "?slug=$slug&limit=$limit";
+	/**
+	 * When no shortcode content is given, output will be formatted per plugin/theme as follows.
+	 */
+	const DEFAULT_OUTPUT_FORMAT = '
+		<div class="developer-info">
+			<a href="[dev-info-homepage]" target="_blank">[dev-info-icon]</a>
+			<div class="title">
+				<h3><a href="[dev-info-homepage]" target="_blank" />[dev-info-name]</a></h3>
+				<span class="stars">[dev-info-stars]</span> <span class="ratings">([dev-info-num-ratings])</span>
+			</div>
+			<p class="description">[dev-info-short-description]</p>
+		</div>';
 
-	if( $cb ) $url .= "&callback=$cb";
-	
-	$resp = wp_remote_get( $url, array( 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ) );
+	/**
+	 * @var array Default values for shortcode attributes.
+	 */
+	private static $defaults = array( 'author' => null, 'slug' => null );
 
-	if( is_wp_error( $resp ) )
-		return 0;
-	elseif( $resp['response']['code'] > 299 || 
-					$resp['response']['code'] < 200 )
-		return 0;
+	/**
+	 * @var DI_Plugin Used to maintain state while processing nested shortcodes.
+	 */
+	private static $plugin = null;
 
-	return $resp['body'];
-}
-
-// there doesn't appear to be a STATS url for themes
-// => no $type value accepted
-function di_get_stats( $slug, $cb=NULL ){
-	$url = DI_PLUGIN_STATS.$slug;
-	if( $cb ) $url .= "?callback=$cb";
-
-	$resp = wp_remote_get( $url, array( 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ) );
-
-	if( is_wp_error( $resp ) )
-		return 0;
-	elseif( $resp['response']['code'] > 299 || 
-					$resp['response']['code'] < 200 )
-		return 0;
-
-	return $resp['body'];
-}
-
-function di_information( $slug, $fields=NULL, $type=DI_PLUGIN ){
-	$args = array( 'slug' => $slug );
-	if( $fields !== NULL && is_array($fields) )
-		$args['fields'] = $fields;
-
-	return di_send_info_request( 'plugin_information', $args, $type );
-}
-
-// (array)args may include...
-// browse – A bbPress View to “browse”, eg, “popular” = http://wordpress.org/extend/plugins/browse/popular/
-// search – The term to search for
-// tag – Browse by a tag
-// author – Browse by an author (Note: .org has a few plugins to extend the author search to include contributors/etc)
-//
-// (array)fields may include...
-// ‘description’, ‘sections’, ‘tested’ ,’requires’, ‘rating’, ‘downloaded’, ‘downloadlink’, ‘last_updated’ , ‘homepage’, ‘tags’
-//
-// Returns: array of plugin objects (like pi_information)
-function di_query( $args, $fields=NULL, $type=DI_PLUGIN ){
-	if( $fields !== NULL && is_array($fields) && !isset($args['fields']) )
-		$args['fields'] = $fields;
-
-	return di_send_info_request( 'query_plugins', $args, $type );
-}
-
-// Returns: array of objects
-// - 'name' - tag name
-// - 'slug' - tag slug
-// - 'count' - number of plugins
-function di_hot_tags( $number=100, $type=DI_PLUGIN ){
-	return di_send_request( 'hot_tags', $number, $type );
-}
-
-function di_send_info_request( $action, $args, $type ){
-	$body = array(
-		'action'	=> $action,
-		'request'	=> serialize( (object)$args )
-	);
-	
-	if( $type === DI_PLUGIN )
-		$url = DI_PLUGIN_INFO;
-	else
-		$url = DI_THEME_INFO;
-
-	$response = wp_remote_post( $url, array( 'body' => $body ) );
-
-	if( is_wp_error( $response ) ){
-		return 0;
+	/**
+	 * Enqueue styling for default output.
+	 */
+	public static function enqueue_styles() {
+		wp_enqueue_style( 'dev-info-style', plugin_dir_url( __FILE__ ) . 'css/style.css' );
 	}
 
-	$response = unserialize( $response['body'] );
-	// hot_tags returns Array which will cause issues
-	if( is_object( $response ) && di_is_error( $response ) ) {
-		return 0;
+	/**
+	 * @param $atts array The attributes passed to the shortcode.
+	 * @param $content string|null The content of the shortcode, or null if none given.
+	 * @return string The shortcode output, after processing any nested shortcodes.
+	 */
+	public static function do_shortcode($atts, $content = null) {
+		$ret = '<!-- ' . __( 'No plugins matched.', 'dev-info' ) . ' -->';
+		$atts = shortcode_atts( self::$defaults, $atts );
+		$content = !empty($content) ? $content : self::DEFAULT_OUTPUT_FORMAT;
+
+		$plugins = self::get_plugins($atts);
+		if ( count( $plugins ) ) {
+			$ret = '';
+			self::register_nested_shortcodes();
+
+			foreach ( $plugins as $plugin ) {
+				self::$plugin = $plugin;
+				$ret .= do_shortcode( $content );
+			}
+
+			self::unregister_nested_shortcodes();
+		}
+
+		return $ret;
 	}
 
-	return $response;
-}
+	/**
+	 * Processes the nested shortcodes.
+	 * @param $atts array The attributes passed to the shortcode.
+	 * @param $content string|null The content of the nested shortcode.
+	 * @param $shortcode string The shortcode that got us here. Needed to determine what to output.
+	 * @return string The output from the nested shortcode.
+	 */
+	public static function do_nested_shortcode($atts = array(), $content = null, $shortcode = null) {
+		$fields = DI_Plugin::get_field_names();
+		$field  = self::shortcode_suffix_to_field_name( substr( $shortcode, strlen( self::SHORTCODE_PREFIX ) + 1 ) );
 
-function di_is_error( $obj ){
-	return property_exists( $obj, 'error' );
-}
+		$ret = 'The requested shortcode is not recognized: ' . $shortcode;
+		if ( in_array( $field, $fields ) ) {
+			$ret = self::$plugin->$field;
+		}
 
-/* ADD SHORTCODE */
-function di_do_shortcode( $args ){
-	extract( shortcode_atts( array(
-		'slug'				=> NULL,
-		'query_type'	=> NULL, // browse, search, tag, author
-		'query_value'	=> NULL, // term to query for
-		'field'				=> NULL, // value to return
-		'type'				=> 'plugin',
-		'cache'				=> true			// not supported yet
-	), $args ) );
-
-	if( $query_type ^ $query_value ) // TODO: handle error
-		return 0; // both or neither must be defined
-	switch( $query_type ){
-		case 'browse':
-		case 'search':
-		case 'tag':
-		case 'author':
-			break;
-		default: // TODO: handle error
-			return 0; // unsupported type
+		return $ret;
 	}
 
-	if( $type == 'plugin' ){
-		$type = DI_PLUGIN;
-	} elseif( $type == 'theme' ) {
-		$type = DI_THEME;
-	} else { // TODO: Handle error
-		return 0;
-	}
-	
-	$fields = array(
-		'description' => false,
-		'sections'		=> false,
-		'tested'			=> false,
-		'requires'		=> false,
-		'rating'			=> false,
-		'downloaded'	=> false,
-		'downloadlink'=> false,
-		'last_updated'=> false,
-		'homepage'		=> false,
-		'tags'				=> false,
-		'name'				=> false
-	);
-	// user failed
-	if( $slug == NULL || !isset( $fields[$field] ) )
-		return '[Invalid User Input]';
-
-	$fields = array( 'field' => $field );
-	if( $ret = di_information( $slug, $fields ) ){
-		return DI_COMMENT.$ret->{$field}; // success
+	/**
+	 * Register nested shortcodes to be processed only once outer [dev-info] is reached.
+	 */
+	private static function register_nested_shortcodes() {
+		foreach ( array_diff( DI_Plugin::get_field_names(), DI_Plugin::get_no_shortcode_fields() ) as $field_name ) {
+			add_shortcode(
+				self::SHORTCODE_PREFIX . '-' . self::field_name_to_shortcode_suffix( $field_name ),
+				array( 'DeveloperInfo', 'do_nested_shortcode' ) );
+		}
 	}
 
-	// API failed
-	return '[An Error Occured]';
+	/**
+	 * Unregister nested shortcodes when not inside of [dev-info].
+	 */
+	private static function unregister_nested_shortcodes() {
+		foreach ( array_diff( DI_Plugin::get_field_names(), DI_Plugin::get_no_shortcode_fields() ) as $field_name ) {
+			remove_shortcode( self::SHORTCODE_PREFIX . '-' . self::field_name_to_shortcode_suffix( $field_name ) );
+		}
+	}
+
+	/**
+	 * @param $suffix string The shortcode suffix.
+	 * @return string The field name.
+	 */
+	private static function shortcode_suffix_to_field_name($suffix) {
+		return str_replace( '-', '_', $suffix );
+	}
+
+	/**
+	 * @param $field_name string The field name
+	 * @return string The shortcode suffix.
+	 */
+	private static function field_name_to_shortcode_suffix($field_name) {
+		return str_replace( '_', '-', $field_name );
+	}
+
+	/**
+	 * @param $args array The args passed to the outer [dev-info] shortcode.
+	 * @return DI_Plugin[] The plugins returned from the WP.org API.
+	 */
+	private static function get_plugins($args) {
+		include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+
+		if ( ! isset( $args['author'] ) && ! isset( $args['slug'] ) ) {
+			return array();
+		}
+
+		$options = array(
+			'slug'     => true,
+			'name'     => true,
+			'version'  => true,
+			'per_page' => self::FIVE_NINES,
+			'fields'   => array_fill_keys( DI_Plugin::get_field_names(), true )
+		);
+
+		// transient name limited to 40 characters so limit accordingly
+		$transient_name = 'di';
+		if ( isset( $args['author'] ) ) {
+			$options['author'] = $args['author'];
+			$transient_name .= 'a' . substr( $args['author'], 12 ) .'_';
+		}
+		if ( isset( $args['slug'] ) ) {
+			$options['slug'] = $args['slug'];
+			$transient_name .= 's' . substr( $args['slug'], 23 ) . '_';
+		}
+
+		// try to retrieve cached value first
+		$transient_name = substr( $transient_name, 0, -1 );
+		if ( ( !defined( 'WP_DEBUG' ) || !WP_DEBUG ) && ( $ret = get_transient( $transient_name ) ) ) {
+			return $ret;
+		}
+
+		$resp = plugins_api( 'query_plugins', $options );
+		$ret = array();
+		if ( ! is_wp_error( $resp ) ) {
+			foreach ( $resp->plugins as $plugin ) {
+				$ret[$plugin->slug] = new DI_Plugin( $plugin );
+			}
+		}
+
+		// set cached value for later use
+		if ( !defined( 'WP_DEBUG' ) || !WP_DEBUG ) {
+			set_transient( $transient_name, $ret, HOUR_IN_SECONDS * 6 );
+		}
+
+		return $ret;
+	}
 }
-add_shortcode( 'dinfo', 'di_do_shortcode' );
-
-function di_downloads_graph( $args ){
-	extract( shortcode_atts( array(
-		'slug'				=> NULL,
-		'gtype'				=> 'downloads', // 'versions' available for plugins
-		'type'				=> 'plugin',
-		'cache'				=> true			// not supported yet
-	), $args ) );
-
-	if( $type == 'plugin' )
-		$type = DI_PLUGIN;
-	elseif( $type == 'theme' && $gtype == 'versions' )
-		return 0;
-	else
-		$type = DI_THEME;
-
-	echo "
-	<script>
-		if( slug === undefined )
-			var slug = $slug;
-		else // handle mult graphs on one pg
-			slug .= '$slug,';
-	</script>";
-
-	return DI_CHART_DIV;
-}
-add_shortcode( 'digraph', 'di_do_graph' );
-
-/* ENQUEUE SCRIPTS & STYLING */
-wp_enqueue_script( 'google-jsapi', 'https://www.google.com/jsapi', , , true );
-wp_enqueue_script( 'dev-info', DI_URL.'js/scripts.js', array( 'google-jsapi' ), , true );
