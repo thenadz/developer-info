@@ -1,0 +1,31 @@
+.developer-info {
+    position: relative;
+}
+
+.developer-info .plugin-icon {
+    display: inline-block;
+    vertical-align: top;
+    width: 96px;
+    height: 96px;
+    margin-bottom: 0.25em;
+}
+
+.developer-info .title {
+    display: inline-block;
+}
+
+.developer-info .stars {
+    color: #e6b800;
+}
+
+.developer-info h3 {
+    font-size: 18px;
+    line-height: 1.3;
+    margin-top: 0 !important;
+    margin-bottom: 0.25em !important;
+}
+
+.developer-info a {
+    text-decoration: none;
+    border-bottom: none !important;
+}
