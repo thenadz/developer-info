@@ -160,19 +160,19 @@ class DeveloperInfo {
 			'fields'   => array_fill_keys( DI_Plugin::get_field_names(), true )
 		);
 
-		// transient name limited to 40 characters so limit accordingly
-		$transient_name = 'di';
+		// transient name limited to 40 characters so use hash to record all info w/o exceeding size constraints
+		$to_hash = '';
 		if ( isset( $args['author'] ) ) {
 			$options['author'] = $args['author'];
-			$transient_name .= 'a' . substr( $args['author'], 12 ) .'_';
+			$to_hash .= 'a=' . $args['author'] .';';
 		}
 		if ( isset( $args['slug'] ) ) {
 			$options['slug'] = $args['slug'];
-			$transient_name .= 's' . substr( $args['slug'], 23 ) . '_';
+			$to_hash .= 's=' . $args['slug'] . ';';
 		}
 
 		// try to retrieve cached value first
-		$transient_name = substr( $transient_name, 0, -1 );
+		$transient_name = 'di_plugin_' . hash( 'crc32', $to_hash );
 		if ( ( !defined( 'WP_DEBUG' ) || !WP_DEBUG ) && ( $ret = get_transient( $transient_name ) ) ) {
 			return $ret;
 		}
