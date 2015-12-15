@@ -46,7 +46,12 @@ class DeveloperInfo {
 	/**
 	 * @var array Default values for shortcode attributes.
 	 */
-	private static $defaults = array( 'author' => null, 'slug' => null );
+	private static $defaults = array( 'author' => null, 'slug' => null, 'orderby' => 'name', 'order' => 'ASC' );
+
+	/**
+	 * @var array The args derived from values passed into shortcode combined with the defaults.
+	 */
+	private static $atts;
 
 	/**
 	 * @var DI_Plugin Used to maintain state while processing nested shortcodes.
@@ -67,10 +72,10 @@ class DeveloperInfo {
 	 */
 	public static function do_shortcode($atts, $content = null) {
 		$ret = '<!-- ' . __( 'No plugins matched.', 'dev-info' ) . ' -->';
-		$atts = shortcode_atts( self::$defaults, $atts );
+		self::$atts = shortcode_atts( self::$defaults, $atts );
 		$content = !empty($content) ? $content : self::DEFAULT_OUTPUT_FORMAT;
 
-		$plugins = self::get_plugins($atts);
+		$plugins = self::get_plugins( self::$atts );
 		if ( count( $plugins ) ) {
 			$ret = '';
 			self::register_nested_shortcodes();
@@ -142,13 +147,12 @@ class DeveloperInfo {
 	}
 
 	/**
-	 * @param $args array The args passed to the outer [dev-info] shortcode.
 	 * @return DI_Plugin[] The plugins returned from the WP.org API.
 	 */
-	private static function get_plugins($args) {
+	private static function get_plugins() {
 		include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
 
-		if ( ! isset( $args['author'] ) && ! isset( $args['slug'] ) ) {
+		if ( ! isset( self::$atts['author'] ) && ! isset( self::$atts['slug'] ) ) {
 			return array();
 		}
 
@@ -162,13 +166,13 @@ class DeveloperInfo {
 
 		// transient name limited to 40 characters so use hash to record all info w/o exceeding size constraints
 		$to_hash = '';
-		if ( isset( $args['author'] ) ) {
-			$options['author'] = $args['author'];
-			$to_hash .= 'a=' . $args['author'] .';';
+		if ( isset( self::$atts['author'] ) ) {
+			$options['author'] = self::$atts['author'];
+			$to_hash .= 'a=' . self::$atts['author'] .';';
 		}
-		if ( isset( $args['slug'] ) ) {
-			$options['slug'] = $args['slug'];
-			$to_hash .= 's=' . $args['slug'] . ';';
+		if ( isset( self::$atts['slug'] ) ) {
+			$options['slug'] = self::$atts['slug'];
+			$to_hash .= 's=' . self::$atts['slug'] . ';';
 		}
 
 		// try to retrieve cached value first
@@ -180,6 +184,7 @@ class DeveloperInfo {
 		$resp = plugins_api( 'query_plugins', $options );
 		$ret = array();
 		if ( ! is_wp_error( $resp ) ) {
+			usort( $resp->plugins, array( __CLASS__, 'cmp_plugins' ) );
 			foreach ( $resp->plugins as $plugin ) {
 				$ret[$plugin->slug] = new DI_Plugin( $plugin );
 			}
@@ -191,5 +196,22 @@ class DeveloperInfo {
 		}
 
 		return $ret;
+	}
+
+	/**
+	 * @param $p1 Plugin 1.
+	 * @param $p2 Plugin 2.
+	 * @return int Order value used by usort.
+	 */
+	private static function cmp_plugins( $p1, $p2 ) {
+		$v1 = $p1->{self::$atts['orderby']};
+		$v2 = $p2->{self::$atts['orderby']};
+		if (is_string( $v1 ) ) {
+			$ret = strcmp( $v1, $v2 );
+		} else {
+			$ret = $v1 - $v2;
+		}
+
+		return 'ASC' === strtoupper( self::$atts['order'] ) ? $ret : -$ret;
 	}
 }
