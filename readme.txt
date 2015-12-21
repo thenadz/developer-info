@@ -1,9 +1,9 @@
 === WP Developer Info ===
 Contributors: dan.rossiter
 Tags: developer, developers, plugin, theme, info, api
-Requires at least: 2.8.0
+Requires at least: 3.8.0
 Tested up to: 4.4
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,9 @@ embed part of your information. The field specified will be included inline.
 1. Sample default output using `[dev-info author=danrossiter]`.
 
 == Changelog ==
+
+= 1.0.3 =
+* **Bug Fix:** Dashicons weren't being loaded on frontend breaking the ratings stars. Fixed.
 
 = 1.0.2 =
 * **Bug Fix:** Fixed broken ordering for numeric values.

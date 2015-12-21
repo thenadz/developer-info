@@ -5,8 +5,7 @@ defined( 'WPINC' ) OR exit;
   Plugin Name: WP Developer Info
   Plugin URI: http://wordpress.org/extend/plugins/developer-info/
   Description: Easy access to the WP.org Plugin & Theme APIs so that developers can showcase their work.
-  Version: 1.0.2
-  Requires at least: 2.8.0
+  Version: 1.0.3
   Author: Dan Rossiter
   Author URI: http://danrossiter.org/
   License: GPLv2 or later
@@ -59,7 +58,7 @@ class DeveloperInfo {
 	 * Enqueue styling for default output.
 	 */
 	public static function enqueue_styles() {
-		wp_enqueue_style( 'dev-info-style', plugin_dir_url( __FILE__ ) . 'css/style.css' );
+		wp_enqueue_style( 'dev-info-style', plugin_dir_url( __FILE__ ) . 'css/style.css', array( 'dashicons' ) );
 	}
 
 	/**
