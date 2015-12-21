@@ -29,6 +29,9 @@ class DI_Theme extends DI_Item {
 		$this->author = $this->author->display_name;
 	}
 
+	/**
+	 * Initialize short_description field.
+	 */
 	protected function init_short_description() {
 		$this->short_description = substr( $this->description, 0, 150 );
 	}

@@ -3,17 +3,17 @@ Contributors: dan.rossiter
 Tags: developer, developers, plugin, theme, info, api
 Requires at least: 2.8.0
 Tested up to: 4.4
-Stable tag: 1.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 You worked hard developing your plugins & themes for the WP.org community. Don't you think you should be able
-to display your hard work on your blog?
+to show off your hard work?
 
 == Description ==
 
 You worked hard developing your plugins & themes for the WP.org community. Don't you think you should be able
-to display your hard work on your blog? I did, so I threw together this plugin which will poll the WP.org plugin &
+to show off your hard work? I did, so I threw together this plugin which will poll the WP.org plugin &
 theme APIs and dynamically display all of your hard work. Unlike some similar plugins, there is no page scraping
 happening here (eww!).
 
@@ -27,8 +27,8 @@ Advanced usage is documented below.
   The default is both, but if you only want one then you should explicitly set this value to avoid making two HTTP
   calls from your server.
 
-`[dev-info]` supports a number of nested shortcodes allowing complete customization of the output generated. An example
-of this is the following (this is infact the default output format):
+The `[dev-info]` shortcode supports a number of nested shortcodes allowing complete customization of the output generated.
+An example of this is the following (this is infact the default output format):
 `<div class="developer-info">
     <a href="[dev-info-homepage]" target="_blank">[dev-info-icon]</a>
     <div class="title">
@@ -67,6 +67,9 @@ embed part of your information. The field specified will be included inline.
 1. Sample default output using `[dev-info author=danrossiter]`.
 
 == Changelog ==
+
+= 1.0.1 =
+* **Bug Fix:** Removing inadvertently-promoted debug code.
 
 = 1.0 =
 * **Enhancement:** Adding themes API support.
