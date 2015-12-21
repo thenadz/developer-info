@@ -8,12 +8,12 @@ License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 You worked hard developing your plugins & themes for the WP.org community. Don't you think you should be able
-to display your hard work on your blog?
+to show off your hard work?
 
 == Description ==
 
 You worked hard developing your plugins & themes for the WP.org community. Don't you think you should be able
-to display your hard work on your blog? I did, so I threw together this plugin which will poll the WP.org plugin &
+to show off your hard work? I did, so I threw together this plugin which will poll the WP.org plugin &
 theme APIs and dynamically display all of your hard work. Unlike some similar plugins, there is no page scraping
 happening here (eww!).
 
