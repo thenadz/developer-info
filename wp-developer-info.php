@@ -90,6 +90,9 @@ class DeveloperInfo {
 		return $ret;
 	}
 
+	/**
+	 * Sanitize the attributes given.
+	 */
 	private static function sanitize_atts() {
 		if ( is_string( self::$atts['api'] ) ) {
 			self::$atts['api'] = explode( ',', self::$atts['api'] );
@@ -161,6 +164,9 @@ class DeveloperInfo {
 		return str_replace( '_', '-', $field_name );
 	}
 
+	/**
+	 * @return DI_Item[] The matched items from the plugin and theme APIs.
+	 */
 	private static function get_items() {
 		$debug = defined( 'WP_DEBUG' ) && WP_DEBUG;
 
@@ -243,6 +249,11 @@ class DeveloperInfo {
 		return $ret;
 	}
 
+	/**
+	 * @param $type string plugins or themes
+	 *
+	 * @return string The unique transient name based on type, author, and slug.
+	 */
 	private static function get_transient_name($type) {
 		// transient name limited to 40 characters so use hash to record all info w/o exceeding size constraints
 		$to_hash = '';
@@ -258,8 +269,8 @@ class DeveloperInfo {
 	}
 
 	/**
-	 * @param $i1 DI_Plugin 1.
-	 * @param $i2 DI_Plugin 2.
+	 * @param $i1 DI_Item 1.
+	 * @param $i2 DI_Item 2.
 	 *
 	 * @return int Order value used by usort.
 	 */
