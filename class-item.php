@@ -144,6 +144,16 @@ abstract class DI_Item {
 	}
 
 	/**
+	 * Ensure we have numbers rather than strings. Important for orderby.
+	 */
+	private function init_numbers() {
+		$this->active_installs = absint( $this->active_installs );
+		$this->rating = absint( $this->rating );
+		$this->num_ratings = absint( $this->num_ratings );
+		$this->downloaded = absint( $this->downloaded );
+	}
+
+	/**
 	 * @var ReflectionClass[] ReflectionClass for all children of this class.
 	 */
 	private static $reflection_class;
