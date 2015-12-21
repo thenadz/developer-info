@@ -5,7 +5,7 @@ defined( 'WPINC' ) OR exit;
   Plugin Name: WP Developer Info
   Plugin URI: http://wordpress.org/extend/plugins/developer-info/
   Description: Easy access to the WP.org Plugin & Theme APIs so that developers can showcase their work.
-  Version: 0.8
+  Version: 1.0
   Requires at least: 2.8.0
   Author: Dan Rossiter
   Author URI: http://danrossiter.org/
