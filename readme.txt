@@ -3,20 +3,57 @@ Contributors: dan.rossiter
 Tags: developer, developers, plugin, theme, info, api
 Requires at least: 2.8.0
 Tested up to: 4.4
-Stable tag: 0.8
+Stable tag: 1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-This plugin provides easy access to the WordPress.org Plugin & Theme Info APIs
-so that WP.org developers can showcase their work.
+You worked hard developing your plugins & themes for the WP.org community. Don't you think you should be able
+to display your hard work on your blog?
 
 == Description ==
 
-Plugin API support developed, themes API forthcoming. `[dev-info author=<author slug> slug=<plugin slug>]`
-(both attributes are optional, but at least one must be given). Fully customizable
-output through use of nested shortcodes (see `DEFAULT_OUTPUT_FORMAT` in wp-developer-info.php for example).
+You worked hard developing your plugins & themes for the WP.org community. Don't you think you should be able
+to display your hard work on your blog? I did, so I threw together this plugin which will poll the WP.org plugin &
+theme APIs and dynamically display all of your hard work. Unlike some similar plugins, there is no page scraping
+happening here (eww!).
 
-Better documentation in the works.
+Usage could not be more easy. The simplest usage is the following shortcode: `[dev-info author=<author slug>]`.
+Advanced usage is documented below.
+
+= [dev-info] Arguments =
+* **author:** The author slug. This is the same value at the end of your WP.org profile (eg: *https://profiles.wordpress.org/**danrossiter**/*).
+* **slug:** The plugin or theme slug to be retrieved (useful if you just want to display info about a single plugin).
+* **api:** Optional. This indicates whether to query the plugins API, the themes API, or both ("plugins", "themes", "plugins,themes").
+  The default is both, but if you only want one then you should explicitly set this value to avoid making two HTTP
+  calls from your server.
+
+`[dev-info]` supports a number of nested shortcodes allowing complete customization of the output generated. An example
+of this is the following (this is infact the default output format):
+`<div class="developer-info">
+    <a href="[dev-info-homepage]" target="_blank">[dev-info-icon]</a>
+    <div class="title">
+        <h3><a href="[dev-info-homepage]" target="_blank" />[dev-info-name]</a></h3>
+        <span class="stars">[dev-info-stars]</span> <span class="ratings">([dev-info-num-ratings])</span>
+    </div>
+    <p class="description">[dev-info-short-description]</p>
+</div>`
+
+* **[dev-info-name]:** The name of the plugin/theme.
+* **[dev-info-slug]:** The slug identifying the plugin/theme.
+* **[dev-info-description]:** The full description.
+* **[dev-info-short-description]:** The short description. For themes this is the first 150 characters of the description.
+* **[dev-info-version]:** The current version of the plugin/theme.
+* **[dev-info-author]:** The name of the author.
+* **[dev-info-author-profile]:** The URL for the author's WP.org profile.
+* **[dev-info-active-installs]:** The number of active installs for the plugin/theme.
+* **[dev-info-rating]:** Percent rating of the plugin/theme.
+* **[dev-info-num-ratings]:** The number of users that have rated the plugin/theme.
+* **[dev-info-downloaded]:** The number of downloads for the plugin/theme.
+* **[dev-info-downloadlink]:** The download link for the plugin/theme.
+* **[dev-info-last-updated]:** The last time the plugin/theme was updated.
+* **[dev-info-homepage]:** The homepage of the plugin/theme.
+* **[dev-info-icon]:** The IMG tag containing the icon for plugins and the first screenshot for themes.
+* **[dev-info-stars]:** The rating represented in stars (same as what is displayed on the WP.org profile).
 
 == Installation ==
 
@@ -31,13 +68,13 @@ embed part of your information. The field specified will be included inline.
 
 == Changelog ==
 
-= Coming Soon! =
+= 1.0 =
+* **Enhancement:** Adding themes API support.
+* **Enhancement:** Documenting functionality.
+* **Yay! We're out of beta!**
 
-* More shorttag options
-* Widget options (both frontend & admin dashboard)
-* Caching options for accessing the API less often
-* Supporting Theme Info API (currently not included)
-* Much, much more!
+= 0.8.1 =
+* Minor tweak to how cached API results are persisted.
 
 = 0.8 =
 * Complete rewrite. Now supports customizable output using various nested shortcodes. Documentation is

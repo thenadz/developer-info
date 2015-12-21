@@ -13,17 +13,14 @@ defined( 'WPINC' ) OR exit;
   Text Domain: dev-info
  */
 
+include_once plugin_dir_path( __FILE__ ) . 'class-item.php';
 include_once plugin_dir_path( __FILE__ ) . 'class-plugin.php';
+include_once plugin_dir_path( __FILE__ ) . 'class-theme.php';
 
 add_shortcode( DeveloperInfo::SHORTCODE_PREFIX, array( 'DeveloperInfo', 'do_shortcode' ) );
 add_action( 'wp_enqueue_scripts', array( 'DeveloperInfo', 'enqueue_styles' ) );
 
 class DeveloperInfo {
-
-	/**
-	 * Intended to represent "infinity" when querying the WP.org APIs.
-	 */
-	const FIVE_NINES = 99999;
 
 	/**
 	 * All shortcodes supported by this plugin begin with the following.
@@ -46,7 +43,7 @@ class DeveloperInfo {
 	/**
 	 * @var array Default values for shortcode attributes.
 	 */
-	private static $defaults = array( 'author' => null, 'slug' => null, 'orderby' => 'name', 'order' => 'ASC' );
+	private static $defaults = array( 'author' => null, 'slug' => null, 'orderby' => 'name', 'order' => 'ASC', 'api' => array( 'plugins', 'themes' ) );
 
 	/**
 	 * @var array The args derived from values passed into shortcode combined with the defaults.
@@ -72,10 +69,12 @@ class DeveloperInfo {
 	 */
 	public static function do_shortcode($atts, $content = null) {
 		$ret = '<!-- ' . __( 'No plugins matched.', 'dev-info' ) . ' -->';
-		self::$atts = shortcode_atts( self::$defaults, $atts );
 		$content = !empty($content) ? $content : self::DEFAULT_OUTPUT_FORMAT;
+		self::$atts = shortcode_atts( self::$defaults, $atts );
+		self::sanitize_atts();
 
-		$plugins = self::get_plugins( self::$atts );
+		$plugins = self::get_items();
+
 		if ( count( $plugins ) ) {
 			$ret = '';
 			self::register_nested_shortcodes();
@@ -91,6 +90,22 @@ class DeveloperInfo {
 		return $ret;
 	}
 
+	private static function sanitize_atts() {
+		if ( is_string( self::$atts['api'] ) ) {
+			self::$atts['api'] = explode( ',', self::$atts['api'] );
+		}
+		foreach ( self::$atts['api'] as &$api ) {
+			$api = trim($api);
+		}
+		self::$atts['api'] = array_intersect( self::$atts['api'], self::$defaults['api'] );
+
+		self::$atts['order'] = strtoupper( self::$atts['order'] );
+
+		if ( !in_array( self::$atts['orderby'], DI_Item::get_shortcode_field_names() ) ) {
+			self::$atts['orderby'] = self::$defaults['orderby'];
+		}
+	}
+
 	/**
 	 * Processes the nested shortcodes.
 	 * @param $atts array The attributes passed to the shortcode.
@@ -99,7 +114,7 @@ class DeveloperInfo {
 	 * @return string The output from the nested shortcode.
 	 */
 	public static function do_nested_shortcode($atts = array(), $content = null, $shortcode = null) {
-		$fields = DI_Plugin::get_field_names();
+		$fields = DI_Item::get_shortcode_field_names();
 		$field  = self::shortcode_suffix_to_field_name( substr( $shortcode, strlen( self::SHORTCODE_PREFIX ) + 1 ) );
 
 		$ret = 'The requested shortcode is not recognized: ' . $shortcode;
@@ -114,7 +129,7 @@ class DeveloperInfo {
 	 * Register nested shortcodes to be processed only once outer [dev-info] is reached.
 	 */
 	private static function register_nested_shortcodes() {
-		foreach ( array_diff( DI_Plugin::get_field_names(), DI_Plugin::get_no_shortcode_fields() ) as $field_name ) {
+		foreach ( DI_Item::get_shortcode_field_names() as $field_name ) {
 			add_shortcode(
 				self::SHORTCODE_PREFIX . '-' . self::field_name_to_shortcode_suffix( $field_name ),
 				array( 'DeveloperInfo', 'do_nested_shortcode' ) );
@@ -125,7 +140,7 @@ class DeveloperInfo {
 	 * Unregister nested shortcodes when not inside of [dev-info].
 	 */
 	private static function unregister_nested_shortcodes() {
-		foreach ( array_diff( DI_Plugin::get_field_names(), DI_Plugin::get_no_shortcode_fields() ) as $field_name ) {
+		foreach ( DI_Item::get_shortcode_field_names() as $field_name ) {
 			remove_shortcode( self::SHORTCODE_PREFIX . '-' . self::field_name_to_shortcode_suffix( $field_name ) );
 		}
 	}
@@ -146,72 +161,117 @@ class DeveloperInfo {
 		return str_replace( '_', '-', $field_name );
 	}
 
-	/**
-	 * @return DI_Plugin[] The plugins returned from the WP.org API.
-	 */
-	private static function get_plugins() {
-		include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+	private static function get_items() {
+		$debug = defined( 'WP_DEBUG' ) && WP_DEBUG;
 
-		if ( ! isset( self::$atts['author'] ) && ! isset( self::$atts['slug'] ) ) {
+		if ( ( ! isset( self::$atts['author'] ) && ! isset( self::$atts['slug'] ) ) || empty( self::$atts['api'] ) ) {
 			return array();
 		}
 
-		$options = array(
-			'slug'     => true,
-			'name'     => true,
-			'version'  => true,
-			'per_page' => self::FIVE_NINES,
-			'fields'   => array_fill_keys( DI_Plugin::get_field_names(), true )
-		);
+		$items = array();
+		foreach ( self::$atts['api'] as $api ) {
+			$transient_name = self::get_transient_name( $api );
+			if ( $debug || !( $ret = get_transient( $transient_name ) ) ) {
+				$options = array(
+						'slug'     => true,
+						'name'     => true,
+						'version'  => true,
+						'per_page' => null
+				);
+				if ( isset( self::$atts['author'] ) ) {
+					$options['author'] = self::$atts['author'];
+				}
+				if ( isset( self::$atts['slug'] ) ) {
+					$options['slug'] = self::$atts['slug'];
+				}
 
-		// transient name limited to 40 characters so use hash to record all info w/o exceeding size constraints
-		$to_hash = '';
-		if ( isset( self::$atts['author'] ) ) {
-			$options['author'] = self::$atts['author'];
-			$to_hash .= 'a=' . self::$atts['author'] .';';
-		}
-		if ( isset( self::$atts['slug'] ) ) {
-			$options['slug'] = self::$atts['slug'];
-			$to_hash .= 's=' . self::$atts['slug'] . ';';
+				$method = "get_{$api}";
+				$ret = self::$method( $options );
+
+				// set cached value for later use
+				if ( !$debug ) {
+					set_transient( $transient_name, $ret, HOUR_IN_SECONDS * 6 );
+				}
+			}
+
+			$items = array_merge( $items, $ret );
 		}
 
-		// try to retrieve cached value first
-		$transient_name = 'di_plugin_' . hash( 'crc32', $to_hash );
-		if ( ( !defined( 'WP_DEBUG' ) || !WP_DEBUG ) && ( $ret = get_transient( $transient_name ) ) ) {
-			return $ret;
-		}
+		usort( $items, array( __CLASS__, 'cmp_items' ) );
+		return $items;
+	}
 
+	/**
+	 * @param $options mixed[] The query options.
+	 *
+	 * @return DI_Plugin[] The plugins returned from the WP.org API.
+	 */
+	private static function get_plugins( $options ) {
+		include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+
+		$options['fields'] = DI_Plugin::get_api_fields();
 		$resp = plugins_api( 'query_plugins', $options );
 		$ret = array();
 		if ( ! is_wp_error( $resp ) ) {
-			usort( $resp->plugins, array( __CLASS__, 'cmp_plugins' ) );
+			echo '<!-- Plugins Resp: '; print_r($resp->plugins); echo ' -->' .PHP_EOL;
 			foreach ( $resp->plugins as $plugin ) {
 				$ret[$plugin->slug] = new DI_Plugin( $plugin );
 			}
-		}
-
-		// set cached value for later use
-		if ( !defined( 'WP_DEBUG' ) || !WP_DEBUG ) {
-			set_transient( $transient_name, $ret, HOUR_IN_SECONDS * 6 );
 		}
 
 		return $ret;
 	}
 
 	/**
-	 * @param $p1 Plugin 1.
-	 * @param $p2 Plugin 2.
+	 * @param $options mixed[] The query options.
+	 *
+	 * @return DI_Theme[] The themes returned from the WP.org API.
+	 */
+	private static function get_themes( $options ) {
+		include_once ABSPATH . 'wp-admin/includes/theme.php';
+
+		$options['fields'] = DI_Theme::get_api_fields();
+		$resp = themes_api( 'query_themes', $options );
+		$ret = array();
+		if ( ! is_wp_error( $resp ) ) {
+			echo '<!-- Themes Resp: '; print_r($resp->themes); echo ' -->' .PHP_EOL;
+			foreach ( $resp->themes as $theme ) {
+				$ret[$theme->slug] = new DI_Theme( $theme );
+			}
+		}
+
+		return $ret;
+	}
+
+	private static function get_transient_name($type) {
+		// transient name limited to 40 characters so use hash to record all info w/o exceeding size constraints
+		$to_hash = '';
+		if ( isset( self::$atts['author'] ) ) {
+			$to_hash .= 'a=' . self::$atts['author'] .';';
+		}
+		if ( isset( self::$atts['slug'] ) ) {
+			$to_hash .= 's=' . self::$atts['slug'] . ';';
+		}
+
+		// try to retrieve cached value first
+		return "di_{$type}_" . hash( 'crc32', $to_hash );
+	}
+
+	/**
+	 * @param $i1 DI_Plugin 1.
+	 * @param $i2 DI_Plugin 2.
+	 *
 	 * @return int Order value used by usort.
 	 */
-	private static function cmp_plugins( $p1, $p2 ) {
-		$v1 = $p1->{self::$atts['orderby']};
-		$v2 = $p2->{self::$atts['orderby']};
+	private static function cmp_items( $i1, $i2 ) {
+		$v1 = $i1->{self::$atts['orderby']};
+		$v2 = $i2->{self::$atts['orderby']};
 		if (is_string( $v1 ) ) {
 			$ret = strcmp( $v1, $v2 );
 		} else {
 			$ret = $v1 - $v2;
 		}
 
-		return 'ASC' === strtoupper( self::$atts['order'] ) ? $ret : -$ret;
+		return 'ASC' === self::$atts['order'] ? $ret : -$ret;
 	}
 }

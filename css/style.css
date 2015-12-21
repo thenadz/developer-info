@@ -2,12 +2,14 @@
     position: relative;
 }
 
-.developer-info .plugin-icon {
+.developer-info .icon {
     display: inline-block;
     vertical-align: top;
-    width: 96px;
     height: 96px;
     margin-bottom: 0.25em;
+}
+.developer-info .plugin-icon {
+    width: 96px;
 }
 
 .developer-info .title {
