@@ -1,9 +1,9 @@
 === WP Developer Info ===
 Contributors: dan.rossiter
 Tags: developer, developers, plugin, theme, info, api
-Requires at least: 2.8.0
+Requires at least: 3.8.0
 Tested up to: 4.4
-Stable tag: 1.0.1
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,6 +26,9 @@ Advanced usage is documented below.
 * **api:** Optional. This indicates whether to query the plugins API, the themes API, or both ("plugins", "themes", "plugins,themes").
   The default is both, but if you only want one then you should explicitly set this value to avoid making two HTTP
   calls from your server.
+* **orderby:** Field to order by (eg: name, slug, downloaded). Any field with an associated shortcode may be ordered against,
+  though some such as `stars` might not make a whole lot of sense to order by.
+* **order:** Ascending or descending sort (ASC or DESC).
 
 The `[dev-info]` shortcode supports a number of nested shortcodes allowing complete customization of the output generated.
 An example of this is the following (this is infact the default output format):
@@ -67,6 +70,12 @@ embed part of your information. The field specified will be included inline.
 1. Sample default output using `[dev-info author=danrossiter]`.
 
 == Changelog ==
+
+= 1.0.3 =
+* **Bug Fix:** Dashicons weren't being loaded on frontend breaking the ratings stars. Fixed.
+
+= 1.0.2 =
+* **Bug Fix:** Fixed broken ordering for numeric values.
 
 = 1.0.1 =
 * **Bug Fix:** Removing inadvertently-promoted debug code.

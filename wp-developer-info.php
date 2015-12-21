@@ -5,8 +5,7 @@ defined( 'WPINC' ) OR exit;
   Plugin Name: WP Developer Info
   Plugin URI: http://wordpress.org/extend/plugins/developer-info/
   Description: Easy access to the WP.org Plugin & Theme APIs so that developers can showcase their work.
-  Version: 1.0.1
-  Requires at least: 2.8.0
+  Version: 1.0.3
   Author: Dan Rossiter
   Author URI: http://danrossiter.org/
   License: GPLv2 or later
@@ -59,7 +58,7 @@ class DeveloperInfo {
 	 * Enqueue styling for default output.
 	 */
 	public static function enqueue_styles() {
-		wp_enqueue_style( 'dev-info-style', plugin_dir_url( __FILE__ ) . 'css/style.css' );
+		wp_enqueue_style( 'dev-info-style', plugin_dir_url( __FILE__ ) . 'css/style.css', array( 'dashicons' ) );
 	}
 
 	/**
@@ -204,6 +203,7 @@ class DeveloperInfo {
 		}
 
 		usort( $items, array( __CLASS__, 'cmp_items' ) );
+
 		return $items;
 	}
 
@@ -220,7 +220,7 @@ class DeveloperInfo {
 		$ret = array();
 		if ( ! is_wp_error( $resp ) ) {
 			foreach ( $resp->plugins as $plugin ) {
-				$ret[$plugin->slug] = new DI_Plugin( $plugin );
+				$ret[] = new DI_Plugin( $plugin );
 			}
 		}
 
@@ -240,7 +240,7 @@ class DeveloperInfo {
 		$ret = array();
 		if ( ! is_wp_error( $resp ) ) {
 			foreach ( $resp->themes as $theme ) {
-				$ret[$theme->slug] = new DI_Theme( $theme );
+				$ret[] = new DI_Theme( $theme );
 			}
 		}
 
@@ -275,7 +275,10 @@ class DeveloperInfo {
 	private static function cmp_items( $i1, $i2 ) {
 		$v1 = $i1->{self::$atts['orderby']};
 		$v2 = $i2->{self::$atts['orderby']};
-		if (is_string( $v1 ) ) {
+
+		if ( self::$atts['orderby'] == 'version' ) {
+			$ret = version_compare( $v1, $v2 );
+		} else if ( is_string( $v1 ) ) {
 			$ret = strcmp( $v1, $v2 );
 		} else {
 			$ret = $v1 - $v2;
