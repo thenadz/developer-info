@@ -5,7 +5,7 @@ defined( 'WPINC' ) OR exit;
   Plugin Name: WP Developer Info
   Plugin URI: http://wordpress.org/extend/plugins/developer-info/
   Description: Easy access to the WP.org Plugin & Theme APIs so that developers can showcase their work.
-  Version: 1.0
+  Version: 1.0.1
   Requires at least: 2.8.0
   Author: Dan Rossiter
   Author URI: http://danrossiter.org/
@@ -120,7 +120,7 @@ class DeveloperInfo {
 		$fields = DI_Item::get_shortcode_field_names();
 		$field  = self::shortcode_suffix_to_field_name( substr( $shortcode, strlen( self::SHORTCODE_PREFIX ) + 1 ) );
 
-		$ret = 'The requested shortcode is not recognized: ' . $shortcode;
+		$ret = __( 'The requested shortcode is not recognized', 'dev-info' ) . ': ' . $shortcode;
 		if ( in_array( $field, $fields ) ) {
 			$ret = self::$plugin->$field;
 		}
@@ -135,7 +135,7 @@ class DeveloperInfo {
 		foreach ( DI_Item::get_shortcode_field_names() as $field_name ) {
 			add_shortcode(
 				self::SHORTCODE_PREFIX . '-' . self::field_name_to_shortcode_suffix( $field_name ),
-				array( 'DeveloperInfo', 'do_nested_shortcode' ) );
+				array( __CLASS__, 'do_nested_shortcode' ) );
 		}
 	}
 
@@ -219,7 +219,6 @@ class DeveloperInfo {
 		$resp = plugins_api( 'query_plugins', $options );
 		$ret = array();
 		if ( ! is_wp_error( $resp ) ) {
-			echo '<!-- Plugins Resp: '; print_r($resp->plugins); echo ' -->' .PHP_EOL;
 			foreach ( $resp->plugins as $plugin ) {
 				$ret[$plugin->slug] = new DI_Plugin( $plugin );
 			}
@@ -240,7 +239,6 @@ class DeveloperInfo {
 		$resp = themes_api( 'query_themes', $options );
 		$ret = array();
 		if ( ! is_wp_error( $resp ) ) {
-			echo '<!-- Themes Resp: '; print_r($resp->themes); echo ' -->' .PHP_EOL;
 			foreach ( $resp->themes as $theme ) {
 				$ret[$theme->slug] = new DI_Theme( $theme );
 			}

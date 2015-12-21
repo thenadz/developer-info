@@ -3,7 +3,7 @@ Contributors: dan.rossiter
 Tags: developer, developers, plugin, theme, info, api
 Requires at least: 2.8.0
 Tested up to: 4.4
-Stable tag: 1.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -67,6 +67,9 @@ embed part of your information. The field specified will be included inline.
 1. Sample default output using `[dev-info author=danrossiter]`.
 
 == Changelog ==
+
+= 1.0.1 =
+* **Bug Fix:** Removing inadvertently-promoted debug code.
 
 = 1.0 =
 * **Enhancement:** Adding themes API support.
