@@ -27,8 +27,8 @@ Advanced usage is documented below.
   The default is both, but if you only want one then you should explicitly set this value to avoid making two HTTP
   calls from your server.
 
-`[dev-info]` supports a number of nested shortcodes allowing complete customization of the output generated. An example
-of this is the following (this is infact the default output format):
+The `[dev-info]` shortcode supports a number of nested shortcodes allowing complete customization of the output generated.
+An example of this is the following (this is infact the default output format):
 `<div class="developer-info">
     <a href="[dev-info-homepage]" target="_blank">[dev-info-icon]</a>
     <div class="title">
